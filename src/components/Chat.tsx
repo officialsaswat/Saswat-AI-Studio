@@ -187,8 +187,53 @@ export function Chat() {
             
             let response;
             
-            // Knowledge base for common queries
-            const lowerMessage = lastMessage.toLowerCase();
+            // Try AI API first for general knowledge
+            try {
+                // Use Hugging Face Inference API with a better model
+                const apiResponse = await fetch(
+                    'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            inputs: `<s>[INST] You are Saswat AI Studio, a helpful AI assistant. Answer the following question concisely and accurately: ${lastMessage} [/INST]`,
+                            parameters: {
+                                max_new_tokens: 200,
+                                temperature: 0.7,
+                                top_p: 0.95,
+                                return_full_text: false
+                            }
+                        }),
+                        signal: AbortSignal.timeout(15000)
+                    }
+                );
+
+                console.log('API Response Status:', apiResponse.status);
+                
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    console.log('API Response Data:', data);
+                    
+                    if (Array.isArray(data) && data[0]?.generated_text) {
+                        response = data[0].generated_text.trim();
+                        // Clean up the response
+                        response = response.replace(/^<s>\[INST\].*?\[\/INST\]\s*/i, '').trim();
+                        if (response.length < 15) {
+                            throw new Error('Response too short, using knowledge base');
+                        }
+                    } else {
+                        throw new Error('Invalid API response format');
+                    }
+                } else {
+                    throw new Error(`API failed with status ${apiResponse.status}`);
+                }
+            } catch (error) {
+                console.log('AI API unavailable, using knowledge base:', error);
+                
+                // Fallback to knowledge base for common queries
+                const lowerMessage = lastMessage.toLowerCase();
             
             // Greetings
             if (/^(hi|hello|hey|greetings|good morning|good afternoon|good evening)$/i.test(lastMessage.trim())) {
@@ -230,7 +275,7 @@ export function Chat() {
             // General who/what/how questions
             else if (lowerMessage.startsWith('who is') || lowerMessage.startsWith('what is') || lowerMessage.startsWith('how')) {
                 const topic = lastMessage.replace(/^(who is|what is|how|why|when|where)\s+/i, '').trim();
-                response = `That's an interesting question about ${topic}! While I have a knowledge base for common topics, I'm currently operating in optimized mode. I can help with many subjects including technology, science, history, and general knowledge. Could you be more specific or ask about a related topic?`;
+                response = `I apologize, but I don't have specific information about "${topic}" in my current knowledge base. I'm Saswat AI Studio, and while I'm working to expand my capabilities, I currently have detailed knowledge about technology, some world leaders, and general topics. Try asking about Elon Musk, Narendra Modi, AI, or other common topics!`;
             }
             // Thank you
             else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
@@ -242,7 +287,8 @@ export function Chat() {
             }
             // Default
             else {
-                response = `I received your question about "${lastMessage}". I'm Saswat AI Studio, and I'm here to help! While I'm currently in optimized mode, I can assist with many topics. Could you rephrase your question or provide more context? For example, you can ask me about technology, famous people, concepts, or general knowledge topics.`;
+                response = `I received your question: "${lastMessage}". I'm Saswat AI Studio, and I'm here to help! While my AI model is currently loading, I have a knowledge base for common topics. You can ask me about:\n• Technology and AI\n• World leaders (Elon Musk, Narendra Modi, etc.)\n• Science and general knowledge\n\nWhat would you like to know?`;
+            }
             }
             
             console.log('Final response:', response);
