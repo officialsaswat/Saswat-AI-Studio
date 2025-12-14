@@ -181,15 +181,14 @@ export function Chat() {
             }
 
             // Use Puter AI instead of OpenRouter
-            const puterMessages = [
-                { role: 'system', content: SYSTEM_PROMPT },
-                ...newMessages.map(m => ({
-                    role: m.role === 'model' ? 'assistant' : m.role,
-                    content: m.content
-                }))
-            ];
+            const conversationText = newMessages.map(m => {
+                const role = m.role === 'model' ? 'Assistant' : 'User';
+                return `${role}: ${m.content}`;
+            }).join('\n');
 
-            const response = await (window as any).puter.ai.chat(puterMessages);
+            const prompt = `${SYSTEM_PROMPT}\n\n${conversationText}\nAssistant:`;
+            
+            const response = await (window as any).puter.ai.txt2txt(prompt);
             const assistantMessage = response || "No response received.";
 
             if (user && currentSessionId) {

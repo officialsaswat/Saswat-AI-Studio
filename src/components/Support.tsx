@@ -208,16 +208,15 @@ export function Support() {
             // 3. Optional: Try Puter AI for conversational reply (Standard chat)
             // Only do this if it's NOT the initial ticket creation (e.g. follow up questions)
             try {
-                // Use Puter AI instead of OpenRouter
-                const puterMessages = [
-                    { role: 'system', content: SUPPORT_SYSTEM_PROMPT },
-                    ...newMessages.map(m => ({
-                        role: m.role === 'model' ? 'assistant' : m.role,
-                        content: m.content
-                    }))
-                ];
+                // Use Puter AI text generation
+                const conversationText = newMessages.map(m => {
+                    const role = m.role === 'model' ? 'Assistant' : 'User';
+                    return `${role}: ${m.content}`;
+                }).join('\n');
 
-                const reply = await (window as any).puter.ai.chat(puterMessages);
+                const prompt = `${SUPPORT_SYSTEM_PROMPT}\n\n${conversationText}\nAssistant:`;
+                
+                const reply = await (window as any).puter.ai.txt2txt(prompt);
 
                 if (reply) {
                     if (user && currentSessionId) {
