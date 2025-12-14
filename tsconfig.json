@@ -1,7 +1,4 @@
 {
-  "files": [
-    "src/main-entry.tsx"
-  ],
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
