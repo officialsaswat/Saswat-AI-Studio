@@ -43,6 +43,7 @@ export function Chat() {
     const [attachment, setAttachment] = useState<globalThis.File | null>(null);
     const [isListening, setIsListening] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -169,6 +170,7 @@ export function Chat() {
         setInput('');
         setAttachment(null);
         setIsLoading(true);
+        setIsTyping(true);
 
         try {
             if (user && currentSessionId) {
@@ -182,12 +184,83 @@ export function Chat() {
 
             // Smart response system with knowledge base
             const lastMessage = newMessages[newMessages.length - 1].content;
+            const lowerMessage = lastMessage.toLowerCase();
             
             console.log('Processing message:', lastMessage);
             
             let response;
             
-            // Try AI API first for general knowledge
+            // Check knowledge base FIRST for instant responses
+            let useKnowledgeBase = false;
+            
+            // Greetings
+            if (/^(hi|hello|hey|greetings|good morning|good afternoon|good evening)$/i.test(lastMessage.trim())) {
+                response = "Hello! I'm Saswat AI Studio. I'm here to assist you with information, answer questions, and help with various tasks. What can I help you with today?";
+                useKnowledgeBase = true;
+            }
+            // About AI/Self
+            else if (lowerMessage.includes('who are you') || lowerMessage.includes('what are you')) {
+                response = "I'm Saswat AI Studio, an advanced AI assistant designed to help with information, creative tasks, and problem-solving. I was created by Saswat to provide professional and helpful assistance.";
+                useKnowledgeBase = true;
+            }
+            else if (lowerMessage.includes('how are you')) {
+                response = "I'm functioning well, thank you! I'm ready to help you with any questions or tasks. What would you like to know?";
+                useKnowledgeBase = true;
+            }
+            // Elon Musk
+            else if (lowerMessage.includes('elon') && (lowerMessage.includes('musk') || lowerMessage.includes('who is elon'))) {
+                response = "Elon Musk is a business magnate and entrepreneur. He's the CEO of Tesla (electric vehicles), SpaceX (aerospace), and owner of X (formerly Twitter). He's also involved with Neuralink (brain-computer interfaces) and The Boring Company (infrastructure/tunnels). He's known for his ambitious goals including Mars colonization and sustainable energy.";
+                useKnowledgeBase = true;
+            }
+            // Narendra Modi
+            else if (lowerMessage.includes('narendra modi') || lowerMessage.includes('modi')) {
+                response = "Narendra Modi is the Prime Minister of India, serving since May 2014. He's a member of the Bharatiya Janata Party (BJP) and previously served as Chief Minister of Gujarat from 2001 to 2014. His tenure is known for economic reforms, digital initiatives like Digital India, and various infrastructure development programs. He's one of the world's most followed political leaders on social media.";
+                useKnowledgeBase = true;
+            }
+            // World Leaders
+            else if (lowerMessage.includes('joe biden') || (lowerMessage.includes('biden') && lowerMessage.includes('president'))) {
+                response = "Joe Biden is the 46th President of the United States, serving since January 2021. He previously served as Vice President under Barack Obama from 2009-2017 and represented Delaware in the U.S. Senate for 36 years.";
+                useKnowledgeBase = true;
+            }
+            else if (lowerMessage.includes('donald trump') || (lowerMessage.includes('trump') && lowerMessage.includes('president'))) {
+                response = "Donald Trump is an American businessman and politician who served as the 45th President of the United States from 2017 to 2021. Before his presidency, he was known for his real estate business and reality TV show 'The Apprentice'.";
+                useKnowledgeBase = true;
+            }
+            // Farming
+            else if (lowerMessage.includes('subsistence farming') || (lowerMessage.includes('farming') && lowerMessage.includes('subsistence'))) {
+                response = "Subsistence farming is agricultural practice where farmers grow food primarily for their own consumption rather than for sale. It's common in developing countries and focuses on growing just enough to feed the farmer's family with little to no surplus for trade. This contrasts with commercial farming, which is profit-oriented.";
+                useKnowledgeBase = true;
+            }
+            // AI/Technology questions
+            else if (lowerMessage.includes('chatgpt') || lowerMessage.includes('chat gpt')) {
+                response = "ChatGPT is an AI chatbot developed by OpenAI, released in November 2022. It's built on the GPT (Generative Pre-trained Transformer) architecture. OpenAI was founded by Sam Altman, Elon Musk, and others in 2015. ChatGPT became extremely popular for its ability to have human-like conversations and assist with various tasks.";
+                useKnowledgeBase = true;
+            }
+            else if (lowerMessage.includes('openai') || lowerMessage.includes('sam altman')) {
+                response = "OpenAI is an AI research company founded in 2015 by Sam Altman, Elon Musk, Ilya Sutskever, and others. Sam Altman is the current CEO. OpenAI created ChatGPT, GPT-4, DALL-E (image generation), and other AI technologies. Their mission is to ensure artificial general intelligence benefits all of humanity.";
+                useKnowledgeBase = true;
+            }
+            else if (lowerMessage.includes('what is ai') || lowerMessage.includes('artificial intelligence')) {
+                response = "Artificial Intelligence (AI) is the simulation of human intelligence by machines, especially computer systems. It includes learning, reasoning, problem-solving, perception, and language understanding. AI powers virtual assistants, recommendation systems, autonomous vehicles, and much more.";
+                useKnowledgeBase = true;
+            }
+            else if (lowerMessage.includes('what can you do')) {
+                response = "I can help you with:\n• Answering questions on various topics\n• Providing explanations and information\n• Helping with creative writing and ideas\n• Problem-solving and analysis\n• General conversation\n\nWhat would you like assistance with?";
+                useKnowledgeBase = true;
+            }
+            // Thank you
+            else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
+                response = "You're welcome! I'm here to help. Is there anything else you'd like to know?";
+                useKnowledgeBase = true;
+            }
+            // Goodbye
+            else if (lowerMessage.includes('bye') || lowerMessage.includes('goodbye') || lowerMessage.includes('see you')) {
+                response = "Goodbye! Feel free to come back anytime you need assistance. Have a great day!";
+                useKnowledgeBase = true;
+            }
+            
+            // Only try AI API if knowledge base didn't have answer
+            if (!useKnowledgeBase) {
             try {
                 // Use Hugging Face Inference API with a better model
                 const apiResponse = await fetch(
@@ -200,13 +273,13 @@ export function Chat() {
                         body: JSON.stringify({
                             inputs: `<s>[INST] You are Saswat AI Studio, a helpful AI assistant. Answer the following question concisely and accurately: ${lastMessage} [/INST]`,
                             parameters: {
-                                max_new_tokens: 200,
+                                max_new_tokens: 150,
                                 temperature: 0.7,
                                 top_p: 0.95,
                                 return_full_text: false
                             }
                         }),
-                        signal: AbortSignal.timeout(15000)
+                        signal: AbortSignal.timeout(8000)
                     }
                 );
 
@@ -230,70 +303,8 @@ export function Chat() {
                     throw new Error(`API failed with status ${apiResponse.status}`);
                 }
             } catch (error) {
-                console.log('AI API unavailable, using knowledge base:', error);
-                
-                // Fallback to knowledge base for common queries
-                const lowerMessage = lastMessage.toLowerCase();
-            
-            // Greetings
-            if (/^(hi|hello|hey|greetings|good morning|good afternoon|good evening)$/i.test(lastMessage.trim())) {
-                response = "Hello! I'm Saswat AI Studio. I'm here to assist you with information, answer questions, and help with various tasks. What can I help you with today?";
-            }
-            // About AI/Self
-            else if (lowerMessage.includes('who are you') || lowerMessage.includes('what are you')) {
-                response = "I'm Saswat AI Studio, an advanced AI assistant designed to help with information, creative tasks, and problem-solving. I was created by Saswat to provide professional and helpful assistance.";
-            }
-            else if (lowerMessage.includes('how are you')) {
-                response = "I'm functioning well, thank you! I'm ready to help you with any questions or tasks. What would you like to know?";
-            }
-            // Elon Musk
-            else if (lowerMessage.includes('elon') && (lowerMessage.includes('musk') || lowerMessage.includes('who is elon'))) {
-                response = "Elon Musk is a business magnate and entrepreneur. He's the CEO of Tesla (electric vehicles), SpaceX (aerospace), and owner of X (formerly Twitter). He's also involved with Neuralink (brain-computer interfaces) and The Boring Company (infrastructure/tunnels). He's known for his ambitious goals including Mars colonization and sustainable energy.";
-            }
-            // Narendra Modi
-            else if (lowerMessage.includes('narendra modi') || lowerMessage.includes('modi')) {
-                response = "Narendra Modi is the Prime Minister of India, serving since May 2014. He's a member of the Bharatiya Janata Party (BJP) and previously served as Chief Minister of Gujarat from 2001 to 2014. His tenure is known for economic reforms, digital initiatives like Digital India, and various infrastructure development programs. He's one of the world's most followed political leaders on social media.";
-            }
-            // World Leaders
-            else if (lowerMessage.includes('joe biden') || (lowerMessage.includes('biden') && lowerMessage.includes('president'))) {
-                response = "Joe Biden is the 46th President of the United States, serving since January 2021. He previously served as Vice President under Barack Obama from 2009-2017 and represented Delaware in the U.S. Senate for 36 years.";
-            }
-            else if (lowerMessage.includes('donald trump') || (lowerMessage.includes('trump') && lowerMessage.includes('president'))) {
-                response = "Donald Trump is an American businessman and politician who served as the 45th President of the United States from 2017 to 2021. Before his presidency, he was known for his real estate business and reality TV show 'The Apprentice'.";
-            }
-            // Farming
-            else if (lowerMessage.includes('subsistence farming') || (lowerMessage.includes('farming') && lowerMessage.includes('subsistence'))) {
-                response = "Subsistence farming is agricultural practice where farmers grow food primarily for their own consumption rather than for sale. It's common in developing countries and focuses on growing just enough to feed the farmer's family with little to no surplus for trade. This contrasts with commercial farming, which is profit-oriented.";
-            }
-            // AI/Technology questions
-            else if (lowerMessage.includes('chatgpt') || lowerMessage.includes('chat gpt')) {
-                response = "ChatGPT is an AI chatbot developed by OpenAI, released in November 2022. It's built on the GPT (Generative Pre-trained Transformer) architecture. OpenAI was founded by Sam Altman, Elon Musk, and others in 2015. ChatGPT became extremely popular for its ability to have human-like conversations and assist with various tasks.";
-            }
-            else if (lowerMessage.includes('openai') || lowerMessage.includes('sam altman')) {
-                response = "OpenAI is an AI research company founded in 2015 by Sam Altman, Elon Musk, Ilya Sutskever, and others. Sam Altman is the current CEO. OpenAI created ChatGPT, GPT-4, DALL-E (image generation), and other AI technologies. Their mission is to ensure artificial general intelligence benefits all of humanity.";
-            }
-            else if (lowerMessage.includes('what is ai') || lowerMessage.includes('artificial intelligence')) {
-                response = "Artificial Intelligence (AI) is the simulation of human intelligence by machines, especially computer systems. It includes learning, reasoning, problem-solving, perception, and language understanding. AI powers virtual assistants, recommendation systems, autonomous vehicles, and much more.";
-            }
-            else if (lowerMessage.includes('what can you do')) {
-                response = "I can help you with:\n• Answering questions on various topics\n• Providing explanations and information\n• Helping with creative writing and ideas\n• Problem-solving and analysis\n• General conversation\n\nWhat would you like assistance with?";
-            }
-            // General who/what/how questions
-            else if (lowerMessage.startsWith('who is') || lowerMessage.startsWith('what is') || lowerMessage.startsWith('how')) {
-                const topic = lastMessage.replace(/^(who is|what is|how|why|when|where)\s+/i, '').trim();
-                response = `I apologize, but I don't have specific information about "${topic}" in my current knowledge base. I'm Saswat AI Studio, and while I'm working to expand my capabilities, I currently have detailed knowledge about technology, some world leaders, and general topics. Try asking about Elon Musk, Narendra Modi, AI, or other common topics!`;
-            }
-            // Thank you
-            else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-                response = "You're welcome! I'm here to help. Is there anything else you'd like to know?";
-            }
-            // Goodbye
-            else if (lowerMessage.includes('bye') || lowerMessage.includes('goodbye') || lowerMessage.includes('see you')) {
-                response = "Goodbye! Feel free to come back anytime you need assistance. Have a great day!";
-            }
-            // Default
-            else {
-                response = `I received your question: "${lastMessage}". I'm Saswat AI Studio, and I'm here to help! While my AI model is currently loading, I have a knowledge base for common topics. You can ask me about:\n• Technology and AI\n• World leaders (Elon Musk, Narendra Modi, etc.)\n• Science and general knowledge\n\nWhat would you like to know?`;
+                console.log('AI API unavailable, using fallback response:', error);
+                response = `I received your question: "${lastMessage}". While my AI model is currently loading, I'm here to help! I have built-in knowledge about technology, world leaders, AI, and general topics. Try asking about ChatGPT, Elon Musk, Narendra Modi, or other common topics for instant answers!`;
             }
             }
             
@@ -324,6 +335,7 @@ export function Chat() {
             setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }]);
         } finally {
             setIsLoading(false);
+            setIsTyping(false);
         }
     };
 
