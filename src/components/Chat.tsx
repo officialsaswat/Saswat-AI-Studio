@@ -180,31 +180,17 @@ export function Chat() {
                 });
             }
 
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-                    'HTTP-Referer': window.location.origin,
-                    'X-Title': 'Saswat AI Studio'
-                },
-                body: JSON.stringify({
-                    model: 'meta-llama/llama-3.2-3b-instruct',
-                    messages: [
-                        { role: 'system', content: SYSTEM_PROMPT },
-                        ...newMessages.map(m => ({
-                            role: m.role === 'model' ? 'assistant' : m.role,
-                            content: m.content
-                        }))
-                    ],
-                    max_tokens: 1000
-                })
-            });
+            // Use Puter AI instead of OpenRouter
+            const puterMessages = [
+                { role: 'system', content: SYSTEM_PROMPT },
+                ...newMessages.map(m => ({
+                    role: m.role === 'model' ? 'assistant' : m.role,
+                    content: m.content
+                }))
+            ];
 
-            if (!response.ok) throw new Error('API request failed');
-
-            const data = await response.json();
-            const assistantMessage = data.choices[0]?.message?.content || "No response received.";
+            const response = await (window as any).puter.ai.chat(puterMessages);
+            const assistantMessage = response || "No response received.";
 
             if (user && currentSessionId) {
                 await supabase.from('chat_history').insert({

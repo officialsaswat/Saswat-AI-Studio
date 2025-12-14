@@ -205,34 +205,21 @@ export function Support() {
                 return; // Exit early, we don't need AI to confusingly reply to the ticket confirmation
             }
 
-            // 3. Optional: Try OpenRouter AI for conversational reply (Standard chat)
+            // 3. Optional: Try Puter AI for conversational reply (Standard chat)
             // Only do this if it's NOT the initial ticket creation (e.g. follow up questions)
             try {
-                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Saswat AI Studio'
-                    },
-                    body: JSON.stringify({
-                        model: 'meta-llama/llama-3.2-3b-instruct',
-                        messages: [
-                            { role: 'system', content: SUPPORT_SYSTEM_PROMPT },
-                            ...newMessages.map(m => ({
-                                role: m.role === 'model' ? 'assistant' : m.role,
-                                content: m.content
-                            }))
-                        ],
-                        max_tokens: 1000
-                    })
-                });
+                // Use Puter AI instead of OpenRouter
+                const puterMessages = [
+                    { role: 'system', content: SUPPORT_SYSTEM_PROMPT },
+                    ...newMessages.map(m => ({
+                        role: m.role === 'model' ? 'assistant' : m.role,
+                        content: m.content
+                    }))
+                ];
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const reply = data.choices[0]?.message?.content || "Ticket updated.";
+                const reply = await (window as any).puter.ai.chat(puterMessages);
 
+                if (reply) {
                     if (user && currentSessionId) {
                         supabase.from('chat_history').insert({
                             user_id: user.id,
