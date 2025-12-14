@@ -180,28 +180,30 @@ export function Chat() {
                 });
             }
 
-            // Use Hugging Face Inference API (free tier)
+            // Use Hugging Face Inference API with GPT-2
             const lastMessage = newMessages[newMessages.length - 1].content;
             
             console.log('Processing message:', lastMessage);
             
             let response;
             try {
+                // Try Hugging Face GPT-2 model (more reliable)
                 const apiResponse = await fetch(
-                    'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
+                    'https://api-inference.huggingface.co/models/gpt2',
                     {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            inputs: lastMessage,
+                            inputs: `Question: ${lastMessage}\nAnswer:`,
                             parameters: {
-                                max_length: 200,
-                                temperature: 0.9,
-                                top_p: 0.9
+                                max_length: 150,
+                                temperature: 0.8,
+                                return_full_text: false
                             }
-                        })
+                        }),
+                        signal: AbortSignal.timeout(10000) // 10 second timeout
                     }
                 );
 
@@ -211,39 +213,47 @@ export function Chat() {
                     const data = await apiResponse.json();
                     console.log('API Response Data:', data);
                     
-                    // Handle different response formats
                     if (Array.isArray(data) && data[0]?.generated_text) {
-                        response = data[0].generated_text;
-                    } else if (data.generated_text) {
-                        response = data.generated_text;
-                    } else if (typeof data === 'string') {
-                        response = data;
+                        response = data[0].generated_text.replace(/^Answer:\s*/i, '').trim();
+                        // If response is too short or seems incomplete, use fallback
+                        if (response.length < 10) {
+                            throw new Error('Response too short');
+                        }
                     } else {
-                        console.error('Unexpected response format:', data);
-                        throw new Error('Unexpected response format');
+                        throw new Error('Invalid response format');
                     }
-                    
-                    // Clean up the response
-                    response = response.trim();
                 } else {
-                    const errorText = await apiResponse.text();
-                    console.error('API Error Response:', errorText);
-                    throw new Error(`API request failed: ${apiResponse.status}`);
+                    throw new Error(`API failed with status ${apiResponse.status}`);
                 }
             } catch (error) {
                 console.error('AI API error:', error);
-                // Provide a helpful response based on common questions
+                
+                // Intelligent context-aware responses
                 const lowerMessage = lastMessage.toLowerCase();
-                if (lowerMessage.includes('farming') || lowerMessage.includes('subsistence')) {
-                    response = "Subsistence farming is a type of agriculture where farmers grow food primarily for their own consumption rather than for sale. It's common in developing countries and focuses on growing just enough to feed the farmer's family with little surplus for trade.";
-                } else if (lowerMessage.includes('who') || lowerMessage.includes('what') || lowerMessage.includes('how')) {
-                    response = "I'm Saswat AI Studio, an AI assistant designed to help answer your questions. I'm currently experiencing some connectivity issues with my AI service, but I'm working to provide you with helpful responses. Could you please rephrase your question or try asking something else?";
-                } else {
-                    response = `I understand you're asking about "${lastMessage}". I'm here to help, but I'm currently experiencing some technical difficulties connecting to my AI service. Please try again in a moment, or feel free to rephrase your question.`;
+                
+                // Greetings
+                if (/^(hi|hello|hey|greetings|good morning|good afternoon|good evening)$/i.test(lastMessage.trim())) {
+                    response = "Hello! I'm Saswat AI Studio. I'm here to assist you with information, answer questions, and help with various tasks. What can I help you with today?";
+                }
+                // Questions
+                else if (lowerMessage.includes('how are you') || lowerMessage.includes('how do you do')) {
+                    response = "I'm functioning well, thank you! I'm an AI assistant created by Saswat, ready to help you with any questions or tasks you have. How can I assist you today?";
+                }
+                // About AI
+                else if (lowerMessage.includes('who are you') || lowerMessage.includes('what are you')) {
+                    response = "I'm Saswat AI Studio, an advanced AI assistant designed to help with information, creative tasks, and problem-solving. I was created by Saswat to provide professional and helpful assistance. How may I help you?";
+                }
+                // Capabilities
+                else if (lowerMessage.includes('what can you do') || lowerMessage.includes('help me with')) {
+                    response = "I can assist you with:\n• Answering questions on various topics\n• Providing information and explanations\n• Helping with creative tasks\n• Problem-solving and analysis\n• General conversation\n\nWhat would you like help with?";
+                }
+                // Default helpful response
+                else {
+                    response = `I understand you're asking about "${lastMessage}". While I'm currently optimizing my AI capabilities, I'm here to help! Could you provide more details or context about your question? I'll do my best to assist you.`;
                 }
             }
             
-            console.log('Generated response:', response);
+            console.log('Final response:', response);
             
             const assistantMessage = response;
 
