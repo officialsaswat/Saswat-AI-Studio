@@ -189,7 +189,7 @@ export function Chat() {
                     'X-Title': 'Saswat AI Studio'
                 },
                 body: JSON.stringify({
-                    model: 'openai/gpt-4o',
+                    model: 'meta-llama/llama-3.2-3b-instruct',
                     messages: [
                         { role: 'system', content: SYSTEM_PROMPT },
                         ...newMessages.map(m => ({

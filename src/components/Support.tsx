@@ -217,7 +217,7 @@ export function Support() {
                         'X-Title': 'Saswat AI Studio'
                     },
                     body: JSON.stringify({
-                        model: 'openai/gpt-4o',
+                        model: 'meta-llama/llama-3.2-3b-instruct',
                         messages: [
                             { role: 'system', content: SUPPORT_SYSTEM_PROMPT },
                             ...newMessages.map(m => ({
