@@ -205,18 +205,33 @@ export function Support() {
                 return; // Exit early, we don't need AI to confusingly reply to the ticket confirmation
             }
 
-            // 3. Optional: Try Puter AI for conversational reply (Standard chat)
-            // Only do this if it's NOT the initial ticket creation (e.g. follow up questions)
+            // 3. Try Hugging Face AI for conversational reply
             try {
                 const lastMessage = newMessages[newMessages.length - 1].content;
                 
-                let reply;
-                if ((window as any).puter && (window as any).puter.ai) {
-                    if (typeof (window as any).puter.ai.chat === 'function') {
-                        reply = await (window as any).puter.ai.chat(lastMessage);
-                    } else if (typeof (window as any).puter.ai.complete === 'function') {
-                        reply = await (window as any).puter.ai.complete(lastMessage);
+                const apiResponse = await fetch(
+                    'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            inputs: `${SUPPORT_SYSTEM_PROMPT}\n\nUser: ${lastMessage}\nAssistant:`,
+                            parameters: {
+                                max_new_tokens: 400,
+                                temperature: 0.7,
+                                return_full_text: false
+                            }
+                        })
                     }
+                );
+
+                let reply;
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    reply = data[0]?.generated_text || data.generated_text;
+                    reply = reply?.replace(/^\s*(Assistant:|AI:)\s*/i, '').trim();
                 }
 
                 if (reply) {

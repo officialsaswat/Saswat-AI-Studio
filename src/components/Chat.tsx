@@ -180,13 +180,44 @@ export function Chat() {
                 });
             }
 
-            // Simple AI response without external API calls
+            // Use Hugging Face Inference API (free tier)
             const lastMessage = newMessages[newMessages.length - 1].content;
             
             console.log('Processing message:', lastMessage);
             
-            // Generate a simple acknowledgment response
-            const response = `Thank you for your message: "${lastMessage}". I'm Saswat AI Studio, currently in demo mode. Full AI capabilities will be available soon. How else can I assist you today?`;
+            let response;
+            try {
+                const apiResponse = await fetch(
+                    'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            inputs: `${SYSTEM_PROMPT}\n\nUser: ${lastMessage}\nAssistant:`,
+                            parameters: {
+                                max_new_tokens: 500,
+                                temperature: 0.7,
+                                top_p: 0.95,
+                                return_full_text: false
+                            }
+                        })
+                    }
+                );
+
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    response = data[0]?.generated_text || data.generated_text || "I'm processing your request. Please try again.";
+                    // Clean up the response
+                    response = response.replace(/^\s*(Assistant:|AI:)\s*/i, '').trim();
+                } else {
+                    throw new Error('API request failed');
+                }
+            } catch (error) {
+                console.error('AI API error:', error);
+                response = `I received your message: "${lastMessage}". I'm here to help! As an AI assistant created by Saswat, I can assist with various tasks, answer questions, and provide information. What would you like to know?`;
+            }
             
             console.log('Generated response:', response);
             
