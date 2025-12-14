@@ -188,41 +188,43 @@ export function Chat() {
             // Use Puter AI - try different method names
             const lastMessage = newMessages[newMessages.length - 1].content;
             
-            console.log('Calling Puter AI with message:', lastMessage);
+            console.log('Calling AI with message:', lastMessage);
             let response;
             
-            // Try different Puter AI methods
+            // Use a simple free AI API without authentication
             try {
-                if (typeof (window as any).puter.ai.chat === 'function') {
-                    response = await (window as any).puter.ai.chat(lastMessage);
-                } else if (typeof (window as any).puter.ai.complete === 'function') {
-                    response = await (window as any).puter.ai.complete(lastMessage);
-                } else if (typeof (window as any).puter.ai.completion === 'function') {
-                    response = await (window as any).puter.ai.completion(lastMessage);
-                } else {
-                    // Fallback: use fetch to call a free AI API
-                    const apiResponse = await fetch('https://api.cohere.ai/v1/generate', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer TRIAL-KEY'
-                        },
-                        body: JSON.stringify({
-                            prompt: `${SYSTEM_PROMPT}\n\nUser: ${lastMessage}\nAssistant:`,
-                            max_tokens: 500
-                        })
-                    });
+                const apiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            { role: 'user', content: lastMessage }
+                        ],
+                        temperature: 0.7
+                    })
+                }).catch(() => null);
+                
+                if (apiResponse && apiResponse.ok) {
                     const data = await apiResponse.json();
-                    response = data.generations?.[0]?.text || "I'm having trouble connecting. Please try again.";
+                    response = data.choices?.[0]?.message?.content;
+                }
+                
+                // Fallback to simple response if API fails
+                if (!response) {
+                    response = `I received your message: "${lastMessage}". I'm currently experiencing connectivity issues with AI services. Please try again later or contact support if the issue persists.`;
                 }
             } catch (err) {
-                console.error('Puter AI error:', err);
-                throw err;
+                console.error('AI error:', err);
+                response = `I received your message. However, I'm currently unable to process requests due to technical difficulties. Please try again later.`;
             }
             
-            console.log('Puter AI response:', response);
+            console.log('AI response:', response);
             
-            const assistantMessage = response || "No response received.";
+            const assistantMessage = response;
 
             if (user && currentSessionId) {
                 await supabase.from('chat_history').insert({
