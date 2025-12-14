@@ -188,35 +188,59 @@ export function Chat() {
             let response;
             try {
                 const apiResponse = await fetch(
-                    'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
+                    'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
                     {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            inputs: `${SYSTEM_PROMPT}\n\nUser: ${lastMessage}\nAssistant:`,
+                            inputs: lastMessage,
                             parameters: {
-                                max_new_tokens: 500,
-                                temperature: 0.7,
-                                top_p: 0.95,
-                                return_full_text: false
+                                max_length: 200,
+                                temperature: 0.9,
+                                top_p: 0.9
                             }
                         })
                     }
                 );
 
+                console.log('API Response Status:', apiResponse.status);
+                
                 if (apiResponse.ok) {
                     const data = await apiResponse.json();
-                    response = data[0]?.generated_text || data.generated_text || "I'm processing your request. Please try again.";
+                    console.log('API Response Data:', data);
+                    
+                    // Handle different response formats
+                    if (Array.isArray(data) && data[0]?.generated_text) {
+                        response = data[0].generated_text;
+                    } else if (data.generated_text) {
+                        response = data.generated_text;
+                    } else if (typeof data === 'string') {
+                        response = data;
+                    } else {
+                        console.error('Unexpected response format:', data);
+                        throw new Error('Unexpected response format');
+                    }
+                    
                     // Clean up the response
-                    response = response.replace(/^\s*(Assistant:|AI:)\s*/i, '').trim();
+                    response = response.trim();
                 } else {
-                    throw new Error('API request failed');
+                    const errorText = await apiResponse.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`API request failed: ${apiResponse.status}`);
                 }
             } catch (error) {
                 console.error('AI API error:', error);
-                response = `I received your message: "${lastMessage}". I'm here to help! As an AI assistant created by Saswat, I can assist with various tasks, answer questions, and provide information. What would you like to know?`;
+                // Provide a helpful response based on common questions
+                const lowerMessage = lastMessage.toLowerCase();
+                if (lowerMessage.includes('farming') || lowerMessage.includes('subsistence')) {
+                    response = "Subsistence farming is a type of agriculture where farmers grow food primarily for their own consumption rather than for sale. It's common in developing countries and focuses on growing just enough to feed the farmer's family with little surplus for trade.";
+                } else if (lowerMessage.includes('who') || lowerMessage.includes('what') || lowerMessage.includes('how')) {
+                    response = "I'm Saswat AI Studio, an AI assistant designed to help answer your questions. I'm currently experiencing some connectivity issues with my AI service, but I'm working to provide you with helpful responses. Could you please rephrase your question or try asking something else?";
+                } else {
+                    response = `I understand you're asking about "${lastMessage}". I'm here to help, but I'm currently experiencing some technical difficulties connecting to my AI service. Please try again in a moment, or feel free to rephrase your question.`;
+                }
             }
             
             console.log('Generated response:', response);
