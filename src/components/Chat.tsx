@@ -184,7 +184,7 @@ export function Chat() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer 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', // Should be in .env
+                    'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
                     'HTTP-Referer': window.location.origin,
                     'X-Title': 'Saswat AI Studio'
                 },
