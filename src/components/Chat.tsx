@@ -185,16 +185,41 @@ export function Chat() {
                 throw new Error('Puter AI not available. Please refresh the page.');
             }
 
-            // Use Puter AI text generation
-            const conversationText = newMessages.map(m => {
-                const role = m.role === 'model' ? 'Assistant' : 'User';
-                return `${role}: ${m.content}`;
-            }).join('\n');
-
-            const prompt = `${SYSTEM_PROMPT}\n\n${conversationText}\nAssistant:`;
+            // Use Puter AI - try different method names
+            const lastMessage = newMessages[newMessages.length - 1].content;
             
-            console.log('Calling Puter AI with prompt:', prompt);
-            const response = await (window as any).puter.ai.txt2txt(prompt);
+            console.log('Calling Puter AI with message:', lastMessage);
+            let response;
+            
+            // Try different Puter AI methods
+            try {
+                if (typeof (window as any).puter.ai.chat === 'function') {
+                    response = await (window as any).puter.ai.chat(lastMessage);
+                } else if (typeof (window as any).puter.ai.complete === 'function') {
+                    response = await (window as any).puter.ai.complete(lastMessage);
+                } else if (typeof (window as any).puter.ai.completion === 'function') {
+                    response = await (window as any).puter.ai.completion(lastMessage);
+                } else {
+                    // Fallback: use fetch to call a free AI API
+                    const apiResponse = await fetch('https://api.cohere.ai/v1/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer TRIAL-KEY'
+                        },
+                        body: JSON.stringify({
+                            prompt: `${SYSTEM_PROMPT}\n\nUser: ${lastMessage}\nAssistant:`,
+                            max_tokens: 500
+                        })
+                    });
+                    const data = await apiResponse.json();
+                    response = data.generations?.[0]?.text || "I'm having trouble connecting. Please try again.";
+                }
+            } catch (err) {
+                console.error('Puter AI error:', err);
+                throw err;
+            }
+            
             console.log('Puter AI response:', response);
             
             const assistantMessage = response || "No response received.";

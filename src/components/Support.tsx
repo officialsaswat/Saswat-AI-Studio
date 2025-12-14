@@ -208,15 +208,16 @@ export function Support() {
             // 3. Optional: Try Puter AI for conversational reply (Standard chat)
             // Only do this if it's NOT the initial ticket creation (e.g. follow up questions)
             try {
-                // Use Puter AI text generation
-                const conversationText = newMessages.map(m => {
-                    const role = m.role === 'model' ? 'Assistant' : 'User';
-                    return `${role}: ${m.content}`;
-                }).join('\n');
-
-                const prompt = `${SUPPORT_SYSTEM_PROMPT}\n\n${conversationText}\nAssistant:`;
+                const lastMessage = newMessages[newMessages.length - 1].content;
                 
-                const reply = await (window as any).puter.ai.txt2txt(prompt);
+                let reply;
+                if ((window as any).puter && (window as any).puter.ai) {
+                    if (typeof (window as any).puter.ai.chat === 'function') {
+                        reply = await (window as any).puter.ai.chat(lastMessage);
+                    } else if (typeof (window as any).puter.ai.complete === 'function') {
+                        reply = await (window as any).puter.ai.complete(lastMessage);
+                    }
+                }
 
                 if (reply) {
                     if (user && currentSessionId) {
