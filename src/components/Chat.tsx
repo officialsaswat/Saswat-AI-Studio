@@ -180,49 +180,15 @@ export function Chat() {
                 });
             }
 
-            // Check if Puter is available
-            if (!(window as any).puter || !(window as any).puter.ai) {
-                throw new Error('Puter AI not available. Please refresh the page.');
-            }
-
-            // Use Puter AI - try different method names
+            // Simple AI response without external API calls
             const lastMessage = newMessages[newMessages.length - 1].content;
             
-            console.log('Calling AI with message:', lastMessage);
-            let response;
+            console.log('Processing message:', lastMessage);
             
-            // Use a simple free AI API without authentication
-            try {
-                const apiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: 'gpt-3.5-turbo',
-                        messages: [
-                            { role: 'system', content: SYSTEM_PROMPT },
-                            { role: 'user', content: lastMessage }
-                        ],
-                        temperature: 0.7
-                    })
-                }).catch(() => null);
-                
-                if (apiResponse && apiResponse.ok) {
-                    const data = await apiResponse.json();
-                    response = data.choices?.[0]?.message?.content;
-                }
-                
-                // Fallback to simple response if API fails
-                if (!response) {
-                    response = `I received your message: "${lastMessage}". I'm currently experiencing connectivity issues with AI services. Please try again later or contact support if the issue persists.`;
-                }
-            } catch (err) {
-                console.error('AI error:', err);
-                response = `I received your message. However, I'm currently unable to process requests due to technical difficulties. Please try again later.`;
-            }
+            // Generate a simple acknowledgment response
+            const response = `Thank you for your message: "${lastMessage}". I'm Saswat AI Studio, currently in demo mode. Full AI capabilities will be available soon. How else can I assist you today?`;
             
-            console.log('AI response:', response);
+            console.log('Generated response:', response);
             
             const assistantMessage = response;
 
