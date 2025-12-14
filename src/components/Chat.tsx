@@ -205,6 +205,17 @@ export function Chat() {
             else if (lowerMessage.includes('elon') && (lowerMessage.includes('musk') || lowerMessage.includes('who is elon'))) {
                 response = "Elon Musk is a business magnate and entrepreneur. He's the CEO of Tesla (electric vehicles), SpaceX (aerospace), and owner of X (formerly Twitter). He's also involved with Neuralink (brain-computer interfaces) and The Boring Company (infrastructure/tunnels). He's known for his ambitious goals including Mars colonization and sustainable energy.";
             }
+            // Narendra Modi
+            else if (lowerMessage.includes('narendra modi') || lowerMessage.includes('modi')) {
+                response = "Narendra Modi is the Prime Minister of India, serving since May 2014. He's a member of the Bharatiya Janata Party (BJP) and previously served as Chief Minister of Gujarat from 2001 to 2014. His tenure is known for economic reforms, digital initiatives like Digital India, and various infrastructure development programs. He's one of the world's most followed political leaders on social media.";
+            }
+            // World Leaders
+            else if (lowerMessage.includes('joe biden') || (lowerMessage.includes('biden') && lowerMessage.includes('president'))) {
+                response = "Joe Biden is the 46th President of the United States, serving since January 2021. He previously served as Vice President under Barack Obama from 2009-2017 and represented Delaware in the U.S. Senate for 36 years.";
+            }
+            else if (lowerMessage.includes('donald trump') || (lowerMessage.includes('trump') && lowerMessage.includes('president'))) {
+                response = "Donald Trump is an American businessman and politician who served as the 45th President of the United States from 2017 to 2021. Before his presidency, he was known for his real estate business and reality TV show 'The Apprentice'.";
+            }
             // Farming
             else if (lowerMessage.includes('subsistence farming') || (lowerMessage.includes('farming') && lowerMessage.includes('subsistence'))) {
                 response = "Subsistence farming is agricultural practice where farmers grow food primarily for their own consumption rather than for sale. It's common in developing countries and focuses on growing just enough to feed the farmer's family with little to no surplus for trade. This contrasts with commercial farming, which is profit-oriented.";
