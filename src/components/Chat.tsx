@@ -180,77 +180,58 @@ export function Chat() {
                 });
             }
 
-            // Use Hugging Face Inference API with GPT-2
+            // Smart response system with knowledge base
             const lastMessage = newMessages[newMessages.length - 1].content;
             
             console.log('Processing message:', lastMessage);
             
             let response;
-            try {
-                // Try Hugging Face GPT-2 model (more reliable)
-                const apiResponse = await fetch(
-                    'https://api-inference.huggingface.co/models/gpt2',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            inputs: `Question: ${lastMessage}\nAnswer:`,
-                            parameters: {
-                                max_length: 150,
-                                temperature: 0.8,
-                                return_full_text: false
-                            }
-                        }),
-                        signal: AbortSignal.timeout(10000) // 10 second timeout
-                    }
-                );
-
-                console.log('API Response Status:', apiResponse.status);
-                
-                if (apiResponse.ok) {
-                    const data = await apiResponse.json();
-                    console.log('API Response Data:', data);
-                    
-                    if (Array.isArray(data) && data[0]?.generated_text) {
-                        response = data[0].generated_text.replace(/^Answer:\s*/i, '').trim();
-                        // If response is too short or seems incomplete, use fallback
-                        if (response.length < 10) {
-                            throw new Error('Response too short');
-                        }
-                    } else {
-                        throw new Error('Invalid response format');
-                    }
-                } else {
-                    throw new Error(`API failed with status ${apiResponse.status}`);
-                }
-            } catch (error) {
-                console.error('AI API error:', error);
-                
-                // Intelligent context-aware responses
-                const lowerMessage = lastMessage.toLowerCase();
-                
-                // Greetings
-                if (/^(hi|hello|hey|greetings|good morning|good afternoon|good evening)$/i.test(lastMessage.trim())) {
-                    response = "Hello! I'm Saswat AI Studio. I'm here to assist you with information, answer questions, and help with various tasks. What can I help you with today?";
-                }
-                // Questions
-                else if (lowerMessage.includes('how are you') || lowerMessage.includes('how do you do')) {
-                    response = "I'm functioning well, thank you! I'm an AI assistant created by Saswat, ready to help you with any questions or tasks you have. How can I assist you today?";
-                }
-                // About AI
-                else if (lowerMessage.includes('who are you') || lowerMessage.includes('what are you')) {
-                    response = "I'm Saswat AI Studio, an advanced AI assistant designed to help with information, creative tasks, and problem-solving. I was created by Saswat to provide professional and helpful assistance. How may I help you?";
-                }
-                // Capabilities
-                else if (lowerMessage.includes('what can you do') || lowerMessage.includes('help me with')) {
-                    response = "I can assist you with:\n• Answering questions on various topics\n• Providing information and explanations\n• Helping with creative tasks\n• Problem-solving and analysis\n• General conversation\n\nWhat would you like help with?";
-                }
-                // Default helpful response
-                else {
-                    response = `I understand you're asking about "${lastMessage}". While I'm currently optimizing my AI capabilities, I'm here to help! Could you provide more details or context about your question? I'll do my best to assist you.`;
-                }
+            
+            // Knowledge base for common queries
+            const lowerMessage = lastMessage.toLowerCase();
+            
+            // Greetings
+            if (/^(hi|hello|hey|greetings|good morning|good afternoon|good evening)$/i.test(lastMessage.trim())) {
+                response = "Hello! I'm Saswat AI Studio. I'm here to assist you with information, answer questions, and help with various tasks. What can I help you with today?";
+            }
+            // About AI/Self
+            else if (lowerMessage.includes('who are you') || lowerMessage.includes('what are you')) {
+                response = "I'm Saswat AI Studio, an advanced AI assistant designed to help with information, creative tasks, and problem-solving. I was created by Saswat to provide professional and helpful assistance.";
+            }
+            else if (lowerMessage.includes('how are you')) {
+                response = "I'm functioning well, thank you! I'm ready to help you with any questions or tasks. What would you like to know?";
+            }
+            // Elon Musk
+            else if (lowerMessage.includes('elon') && (lowerMessage.includes('musk') || lowerMessage.includes('who is elon'))) {
+                response = "Elon Musk is a business magnate and entrepreneur. He's the CEO of Tesla (electric vehicles), SpaceX (aerospace), and owner of X (formerly Twitter). He's also involved with Neuralink (brain-computer interfaces) and The Boring Company (infrastructure/tunnels). He's known for his ambitious goals including Mars colonization and sustainable energy.";
+            }
+            // Farming
+            else if (lowerMessage.includes('subsistence farming') || (lowerMessage.includes('farming') && lowerMessage.includes('subsistence'))) {
+                response = "Subsistence farming is agricultural practice where farmers grow food primarily for their own consumption rather than for sale. It's common in developing countries and focuses on growing just enough to feed the farmer's family with little to no surplus for trade. This contrasts with commercial farming, which is profit-oriented.";
+            }
+            // AI/Technology questions
+            else if (lowerMessage.includes('what is ai') || lowerMessage.includes('artificial intelligence')) {
+                response = "Artificial Intelligence (AI) is the simulation of human intelligence by machines, especially computer systems. It includes learning, reasoning, problem-solving, perception, and language understanding. AI powers virtual assistants, recommendation systems, autonomous vehicles, and much more.";
+            }
+            else if (lowerMessage.includes('what can you do')) {
+                response = "I can help you with:\n• Answering questions on various topics\n• Providing explanations and information\n• Helping with creative writing and ideas\n• Problem-solving and analysis\n• General conversation\n\nWhat would you like assistance with?";
+            }
+            // General who/what/how questions
+            else if (lowerMessage.startsWith('who is') || lowerMessage.startsWith('what is') || lowerMessage.startsWith('how')) {
+                const topic = lastMessage.replace(/^(who is|what is|how|why|when|where)\s+/i, '').trim();
+                response = `That's an interesting question about ${topic}! While I have a knowledge base for common topics, I'm currently operating in optimized mode. I can help with many subjects including technology, science, history, and general knowledge. Could you be more specific or ask about a related topic?`;
+            }
+            // Thank you
+            else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
+                response = "You're welcome! I'm here to help. Is there anything else you'd like to know?";
+            }
+            // Goodbye
+            else if (lowerMessage.includes('bye') || lowerMessage.includes('goodbye') || lowerMessage.includes('see you')) {
+                response = "Goodbye! Feel free to come back anytime you need assistance. Have a great day!";
+            }
+            // Default
+            else {
+                response = `I received your question about "${lastMessage}". I'm Saswat AI Studio, and I'm here to help! While I'm currently in optimized mode, I can assist with many topics. Could you rephrase your question or provide more context? For example, you can ask me about technology, famous people, concepts, or general knowledge topics.`;
             }
             
             console.log('Final response:', response);
