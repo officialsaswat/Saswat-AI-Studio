@@ -1,0 +1,470 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
+import { supabase } from '../lib/supabase';
+import { Menu, Bot, User, File, Paperclip, X, Mic, Send } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { StudioSidebar } from './StudioSidebar';
+
+import { WarpOverlay } from './ui/WarpOverlay';
+import { Logo } from './ui/Logo';
+
+const SYSTEM_PROMPT = 'You are Saswat AI Studio, a professional, creative, and advanced AI assistant. You were created by Saswat. Be concise and professional.';
+
+export function Chat() {
+    const { user } = useUser();
+
+    // Navigation State
+    const [isWarping, setIsWarping] = useState(false);
+    const [warpTarget, setWarpTarget] = useState("STUDIO");
+
+    const navigate = useNavigate();
+    const handleNavigate = (path: string) => {
+        setIsWarping(true);
+        if (path === '/image') setWarpTarget("IMAGE GEN");
+        else if (path === '/support') setWarpTarget("SUPPORT");
+        else setWarpTarget("STUDIO");
+
+        setTimeout(() => {
+            navigate(path);
+        }, 300);
+    };
+
+    // Default Messages
+    const [messages, setMessages] = useState<any[]>([
+        {
+            role: 'model',
+            content: 'Hello! I am Saswat AI Studio. How can I help you create today?'
+        }
+    ]);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+    const [input, setInput] = useState('');
+    const [attachment, setAttachment] = useState<globalThis.File | null>(null);
+    const [isListening, setIsListening] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setAttachment(e.target.files[0]);
+        }
+    };
+
+    const toggleListening = () => {
+        if (isListening) {
+            setIsListening(false);
+        } else {
+            setIsListening(true);
+            setTimeout(() => {
+                setInput(prev => prev + " (Voice input simulated)");
+                setIsListening(false);
+            }, 2000);
+        }
+    };
+
+    const startNewChat = async () => {
+        setMessages([{ role: 'model', content: 'Hello! I am Saswat AI Studio. How can I help you create today?' }]);
+        if (user) {
+            const { data } = await supabase
+                .from('chat_sessions')
+                .insert({
+                    user_id: user.id,
+                    title: 'New Chat'
+                })
+                .select()
+                .single();
+
+            if (data) {
+                setCurrentSessionId(data.id);
+                setSessions(prev => [{
+                    id: data.id,
+                    label: data.title,
+                    updated_at: data.created_at
+                }, ...prev]);
+            }
+        }
+    };
+
+    // Fetch sessions on load
+    useEffect(() => {
+        if (user) {
+            const fetchSessions = async () => {
+                const { data } = await supabase
+                    .from('chat_sessions')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('updated_at', { ascending: false });
+
+                if (data) {
+                    setSessions(data.map(s => ({
+                        id: s.id,
+                        label: s.title || 'New Chat',
+                        updated_at: s.updated_at
+                    })));
+
+                    // Auto-load Logic
+                    // EXCLUDE support tickets when auto-loading
+                    const regularSessions = data.filter(s => !s.title?.startsWith('🎫'));
+
+                    if (!currentSessionId) {
+                        if (regularSessions.length > 0) {
+                            setCurrentSessionId(regularSessions[0].id);
+                        } else {
+                            // If no regular sessions exist (only tickets), start fresh
+                            startNewChat();
+                        }
+                    }
+                }
+            };
+            fetchSessions();
+        }
+    }, [user]);
+
+    // Fetch messages when current session changes
+    useEffect(() => {
+        if (user && currentSessionId) {
+            const fetchMessages = async () => {
+                const { data } = await supabase
+                    .from('chat_history')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('session_id', currentSessionId)
+                    .order('created_at', { ascending: true });
+
+                if (data) {
+                    const welcomeMsg = 'Hello! I am Saswat AI Studio. How can I help you create today?';
+                    const historyMessages = data.map(msg => ({
+                        role: msg.role === 'model' ? 'model' : 'user',
+                        content: msg.content
+                    }));
+
+                    const cleanHistory = historyMessages.filter(m => m.content !== welcomeMsg);
+                    setMessages([{ role: 'model', content: welcomeMsg }, ...cleanHistory]);
+                }
+            };
+            fetchMessages();
+        }
+    }, [user, currentSessionId]);
+
+    // Auto-scroll removed to preventing locking user to bottom
+    // useEffect(() => { scrollToBottom(); }, [messages]);
+
+    const handleSend = async () => {
+        if (!input.trim() && !attachment) return;
+        if (isLoading) return;
+
+        const userContent = input;
+
+        const newMessages = [...messages, {
+            role: 'user',
+            content: userContent,
+            attachment: attachment ? { name: attachment.name, type: attachment.type } : undefined
+        }];
+
+        setMessages(newMessages);
+        setInput('');
+        setAttachment(null);
+        setIsLoading(true);
+
+        try {
+            if (user && currentSessionId) {
+                await supabase.from('chat_history').insert({
+                    user_id: user.id,
+                    session_id: currentSessionId,
+                    role: 'user',
+                    content: userContent
+                });
+            }
+
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer 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', // Should be in .env
+                    'HTTP-Referer': window.location.origin,
+                    'X-Title': 'Saswat AI Studio'
+                },
+                body: JSON.stringify({
+                    model: 'openai/gpt-4o',
+                    messages: [
+                        { role: 'system', content: SYSTEM_PROMPT },
+                        ...newMessages.map(m => ({
+                            role: m.role === 'model' ? 'assistant' : m.role,
+                            content: m.content
+                        }))
+                    ],
+                    max_tokens: 1000
+                })
+            });
+
+            if (!response.ok) throw new Error('API request failed');
+
+            const data = await response.json();
+            const assistantMessage = data.choices[0]?.message?.content || "No response received.";
+
+            if (user && currentSessionId) {
+                await supabase.from('chat_history').insert({
+                    user_id: user.id,
+                    session_id: currentSessionId,
+                    role: 'model',
+                    content: assistantMessage
+                });
+
+                if (messages.length <= 1) {
+                    const newLabel = userContent.substring(0, 30);
+                    setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, label: newLabel } : s));
+                    await supabase.from('chat_sessions').update({ title: newLabel }).eq('id', currentSessionId);
+                }
+            }
+
+            setMessages(prev => [...prev, { role: 'model', content: assistantMessage }]);
+
+        } catch (error) {
+            setMessages(prev => [...prev, { role: 'assistant', content: "Error. Please check your connection." }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRenameSession = async (id: string, newTitle: string) => {
+        setSessions(prev => prev.map(s => s.id === id ? { ...s, label: newTitle } : s));
+        if (user) {
+            await supabase.from('chat_sessions').update({ title: newTitle }).eq('id', id).eq('user_id', user.id);
+        }
+    };
+
+    const handleDeleteSession = async (id: string) => {
+        setSessions(prev => prev.filter(s => s.id !== id));
+        if (currentSessionId === id) {
+            const remaining = sessions.filter(s => s.id !== id && !s.label.startsWith('🎫'));
+            if (remaining.length > 0) setCurrentSessionId(remaining[0].id);
+            else startNewChat();
+        }
+        if (user) {
+            await supabase.from('chat_sessions').delete().eq('id', id).eq('user_id', user.id);
+        }
+    };
+
+    // Filter Logic: Hide tickets
+    const creativeSessions = sessions.filter(s => !s.label.startsWith('🎫'));
+
+    return (
+        <div className="flex h-screen bg-[#02040a] text-white overflow-hidden font-sans selection:bg-pink-500/30">
+            <WarpOverlay isExiting={isWarping} targetTitle={warpTarget} />
+            <StudioSidebar
+                onNewItem={startNewChat}
+                newItemLabel="New Chat"
+                historyItems={creativeSessions.map(s => ({
+                    id: s.id,
+                    label: s.label,
+                    onClick: () => setCurrentSessionId(s.id),
+                    onEdit: (newName) => handleRenameSession(s.id, newName),
+                    onDelete: () => handleDeleteSession(s.id)
+                }))}
+                historyTitle="Your Chats"
+                onNavigate={handleNavigate}
+            />
+
+            <div className="flex-1 flex flex-col relative w-full h-full min-h-0 overflow-hidden">
+                {/* Ambient Background Effects */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className="absolute -top-[20%] -right-[20%] w-[1000px] h-[1000px] bg-indigo-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse duration-[5000ms]" />
+                    <div className="absolute -bottom-[20%] -left-[20%] w-[1000px] h-[1000px] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse duration-[7000ms]" />
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-150 contrast-150" />
+                </div>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/40 backdrop-blur-md z-20 shrink-0">
+                    <div className="flex items-center gap-2 md:hidden">
+                        <button className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
+                            <Menu className="w-6 h-6" />
+                        </button>
+                    </div>
+
+                    <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+                        <Logo />
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        {/* Add extra header actions if needed */}
+                    </div>
+                </div>
+
+                {/* Messages */}
+                <div
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 relative z-10 perspective-1000"
+                    data-lenis-prevent
+                >
+                    <AnimatePresence mode='popLayout'>
+                        {messages.map((msg, idx) => (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, rotateX: -90, y: 50, scale: 0.8 }}
+                                animate={{ opacity: 1, rotateX: 0, y: 0, scale: 1 }}
+                                transition={{
+                                    type: "spring",
+                                    damping: 20,
+                                    stiffness: 100,
+                                    duration: 0.6
+                                }}
+                                style={{ transformStyle: 'preserve-3d' }}
+                                className={`flex gap-4 max-w-4xl mx-auto group ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                            >
+                                {/* Avatar */}
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border border-white/10 shadow-lg overflow-hidden ${msg.role === 'model' ? 'bg-black' : 'bg-gray-800'}`}>
+                                    {msg.role === 'model' ? (
+                                        <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
+                                            <Bot className="w-5 h-5 text-white" />
+                                        </div>
+                                    ) : (
+                                        user?.imageUrl ? (
+                                            <img src={user.imageUrl} alt="User" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <User className="w-5 h-5 text-gray-400" />
+                                        )
+                                    )}
+                                </div>
+
+                                {/* Content */}
+                                <div className={`space-y-1 max-w-[85%] md:max-w-[75%] ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                                    <div className="font-medium text-xs text-gray-500 uppercase tracking-wider mb-1 px-1">
+                                        {msg.role === 'model' ? 'Saswat AI' : 'You'}
+                                    </div>
+                                    <div className={`p-5 rounded-2xl backdrop-blur-md text-sm md:text-base leading-relaxed shadow-lg border ${msg.role === 'model'
+                                        ? 'bg-[#1a1d26]/80 border-white/10 text-gray-100 rounded-tl-none hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] transition-shadow'
+                                        : 'bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white border-white/10 rounded-tr-none shadow-[0_10px_30px_-10px_rgba(99,102,241,0.5)]'
+                                        }`}>
+                                        <div className="whitespace-pre-wrap">
+                                            {msg.content}
+                                        </div>
+                                        {(msg as any).attachment && (
+                                            <div className="mt-3 flex items-center gap-3 p-3 rounded-xl bg-black/20 border border-white/5 w-fit">
+                                                <div className="p-2 rounded-lg bg-white/10">
+                                                    <File className="w-4 h-4 text-white" />
+                                                </div>
+                                                <div className="text-left">
+                                                    <div className="text-xs text-gray-400">Attached File</div>
+                                                    <div className="text-sm font-medium text-white max-w-[150px] truncate">{(msg as any).attachment.name}</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+
+                    {isLoading && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex gap-4 max-w-4xl mx-auto"
+                        >
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 animate-pulse">
+                                <Bot className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="font-medium text-xs text-gray-500 uppercase tracking-wider px-1">Thinking</div>
+                                <div className="flex items-center gap-1.5 h-10 px-4 rounded-2xl bg-white/5 border border-white/10 w-fit">
+                                    <motion.span animate={{ scale: [1, 1.2, 1], opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+                                    <motion.span animate={{ scale: [1, 1.2, 1], opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1.5 h-1.5 bg-purple-400 rounded-full" />
+                                    <motion.span animate={{ scale: [1, 1.2, 1], opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1.5 h-1.5 bg-pink-400 rounded-full" />
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                    <div ref={messagesEndRef} className="h-4" />
+                </div>
+
+                {/* Input Area */}
+                <div className="p-6 relative z-20 perspective-1000">
+                    <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        className="max-w-3xl mx-auto relative group"
+                    >
+                        {/* Glowing backdrop for input */}
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-30 group-focus-within:opacity-75 transition-opacity duration-500" />
+
+                        <div className="relative flex flex-col gap-2 bg-[#0a0c12] border border-white/10 rounded-2xl p-3 shadow-2xl transition-all duration-300 transform group-focus-within:scale-[1.01] group-focus-within:bg-[#0f111a]">
+
+                            {attachment && (
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 mx-1 mt-1 animate-in fade-in slide-in-from-bottom-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-1.5 rounded bg-pink-500/20 text-pink-400">
+                                            <File className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-sm text-gray-200">{attachment.name}</span>
+                                    </div>
+                                    <button onClick={() => setAttachment(null)} className="p-1 hover:bg-white/10 rounded-full text-gray-500 hover:text-white transition-colors">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+
+                            <div className="flex items-end gap-2 px-1">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-2.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                                    title="Attach"
+                                >
+                                    <Paperclip className="w-5 h-5" />
+                                </button>
+
+                                <textarea
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSend();
+                                        }
+                                    }}
+                                    placeholder="Ask anything..."
+                                    className="w-full bg-transparent border-none text-white focus:ring-0 resize-none py-2.5 max-h-32 min-h-[44px] placeholder:text-gray-600 text-base"
+                                    rows={1}
+                                    style={{ height: 'auto', minHeight: '44px' }}
+                                />
+
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={toggleListening}
+                                        className={`p-2.5 rounded-xl transition-all ${isListening
+                                            ? 'bg-red-500/10 text-red-500 animate-pulse'
+                                            : 'text-gray-400 hover:text-white hover:bg-white/10'
+                                            }`}
+                                    >
+                                        <Mic className="w-5 h-5" />
+                                    </button>
+
+                                    <button
+                                        onClick={handleSend}
+                                        disabled={!input.trim() && !attachment && !isLoading}
+                                        className={`p-2.5 rounded-xl transition-all shadow-lg ${(input.trim() || attachment) && !isLoading
+                                            ? 'bg-white text-black hover:scale-105 active:scale-95 shadow-white/10'
+                                            : 'bg-white/5 text-gray-500 cursor-not-allowed'
+                                            }`}
+                                    >
+                                        <Send className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="absolute -bottom-6 left-0 right-0 text-center">
+                            <p className="text-[10px] text-gray-600 font-medium">
+                                Saswat AI Studio can make mistakes. Verify important info.
+                            </p>
+                        </div>
+                    </motion.div>
+                </div>
+            </div>
+        </div>
+    );
+}
