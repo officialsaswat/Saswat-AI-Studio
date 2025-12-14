@@ -180,7 +180,12 @@ export function Chat() {
                 });
             }
 
-            // Use Puter AI instead of OpenRouter
+            // Check if Puter is available
+            if (!(window as any).puter || !(window as any).puter.ai) {
+                throw new Error('Puter AI not available. Please refresh the page.');
+            }
+
+            // Use Puter AI text generation
             const conversationText = newMessages.map(m => {
                 const role = m.role === 'model' ? 'Assistant' : 'User';
                 return `${role}: ${m.content}`;
@@ -188,7 +193,10 @@ export function Chat() {
 
             const prompt = `${SYSTEM_PROMPT}\n\n${conversationText}\nAssistant:`;
             
+            console.log('Calling Puter AI with prompt:', prompt);
             const response = await (window as any).puter.ai.txt2txt(prompt);
+            console.log('Puter AI response:', response);
+            
             const assistantMessage = response || "No response received.";
 
             if (user && currentSessionId) {
@@ -209,7 +217,9 @@ export function Chat() {
             setMessages(prev => [...prev, { role: 'model', content: assistantMessage }]);
 
         } catch (error) {
-            setMessages(prev => [...prev, { role: 'assistant', content: "Error. Please check your connection." }]);
+            console.error('Chat error:', error);
+            const errorMessage = error instanceof Error ? error.message : "Error. Please check your connection.";
+            setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }]);
         } finally {
             setIsLoading(false);
         }
