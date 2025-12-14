@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
@@ -29,7 +30,7 @@ export function Header() {
                 {/* Desktop Nav */}
                 <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
                     <a href="#features" className="hover:text-white transition-colors duration-300">Features</a>
-                    <a href="#about" className="hover:text-white transition-colors duration-300">About</a>
+                    <Link to="/about" className="hover:text-white transition-colors duration-300">About</Link>
                     <a href="#pricing" className="hover:text-white transition-colors duration-300">Pricing</a>
                     <a href="#faqs" className="hover:text-white transition-colors duration-300">FAQs</a>
                     <SignedOut>
