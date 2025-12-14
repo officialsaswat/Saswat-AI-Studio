@@ -266,6 +266,12 @@ export function Chat() {
                 response = "Subsistence farming is agricultural practice where farmers grow food primarily for their own consumption rather than for sale. It's common in developing countries and focuses on growing just enough to feed the farmer's family with little to no surplus for trade. This contrasts with commercial farming, which is profit-oriented.";
             }
             // AI/Technology questions
+            else if (lowerMessage.includes('chatgpt') || lowerMessage.includes('chat gpt')) {
+                response = "ChatGPT is an AI chatbot developed by OpenAI, released in November 2022. It's built on the GPT (Generative Pre-trained Transformer) architecture. OpenAI was founded by Sam Altman, Elon Musk, and others in 2015. ChatGPT became extremely popular for its ability to have human-like conversations and assist with various tasks.";
+            }
+            else if (lowerMessage.includes('openai') || lowerMessage.includes('sam altman')) {
+                response = "OpenAI is an AI research company founded in 2015 by Sam Altman, Elon Musk, Ilya Sutskever, and others. Sam Altman is the current CEO. OpenAI created ChatGPT, GPT-4, DALL-E (image generation), and other AI technologies. Their mission is to ensure artificial general intelligence benefits all of humanity.";
+            }
             else if (lowerMessage.includes('what is ai') || lowerMessage.includes('artificial intelligence')) {
                 response = "Artificial Intelligence (AI) is the simulation of human intelligence by machines, especially computer systems. It includes learning, reasoning, problem-solving, perception, and language understanding. AI powers virtual assistants, recommendation systems, autonomous vehicles, and much more.";
             }
