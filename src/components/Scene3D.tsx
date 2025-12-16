@@ -30,7 +30,7 @@ function Particles(props: any) {
 
 export function Scene3D() {
     return (
-        <div className="absolute inset-0 z-0 opacity-40">
+        <div className="absolute inset-0 z-0 opacity-40 hidden md:block">
             <Canvas camera={{ position: [0, 0, 1] }}>
                 <Float speed={2} rotationIntensity={1} floatIntensity={1}>
                     <Particles />

@@ -19,14 +19,14 @@ export function Hero() {
     };
 
     return (
-        <section className="relative pt-32 pb-20 overflow-hidden min-h-screen flex flex-col justify-center">
+        <section className="relative pt-24 md:pt-32 pb-16 md:pb-20 overflow-hidden min-h-[80vh] md:min-h-screen flex flex-col justify-center">
             {/* 3D Background */}
             <Scene3D />
 
             {/* Background gradients/glows fallback/overlay */}
 
             {/* Background gradients/glows fallback/overlay */}
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] -z-10" />
+            <div className="absolute top-14 md:top-20 left-1/2 -translate-x-1/2 w-[320px] h-[320px] md:w-[500px] md:h-[500px] bg-purple-500/10 rounded-full blur-[90px] md:blur-[100px] -z-10" />
 
             <div className="container mx-auto px-4 text-center flex flex-col items-center relative z-10">
                 <motion.div

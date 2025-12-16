@@ -21,7 +21,7 @@ export function ChatInterface3D() {
     const yInput = useTransform(scrollYProgress, [0.2, 0.8], [20, 0]);
 
     return (
-        <div ref={containerRef} className="perspective-[2000px] w-full flex justify-center py-32 overflow-visible min-h-[600px]">
+        <div ref={containerRef} className="hidden md:flex perspective-[2000px] w-full justify-center py-24 lg:py-32 overflow-visible min-h-[420px] lg:min-h-[600px]">
             <motion.div
                 style={{
                     rotateX,
