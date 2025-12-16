@@ -14,20 +14,33 @@ export function IntroLoader({ onComplete }: { onComplete: () => void }) {
     ];
 
     useEffect(() => {
-        const timer = setInterval(() => {
+        let timer: NodeJS.Timeout;
+        let safetyTimeout: NodeJS.Timeout;
+
+        // Safety timeout - ensure loader completes within 4 seconds
+        safetyTimeout = setTimeout(() => {
+            console.log('Loader safety timeout triggered');
+            onComplete();
+        }, 4000);
+
+        timer = setInterval(() => {
             setStep(prev => {
                 if (prev >= steps.length - 1) {
                     clearInterval(timer);
-                    setTimeout(onComplete, 800); // Hold final text briefly
+                    clearTimeout(safetyTimeout);
+                    setTimeout(onComplete, 800);
                     return prev;
                 }
                 // Play simple beep on step change
-                try { synth.playClick(); } catch (e) { }
+                try { synth.playClick(); } catch (e) { console.log('Audio unavailable'); }
                 return prev + 1;
             });
-        }, 600); // Speed of boot sequence
+        }, 600);
 
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            clearTimeout(safetyTimeout);
+        };
     }, [onComplete]);
 
     return (
