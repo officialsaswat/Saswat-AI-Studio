@@ -102,20 +102,22 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <CustomCursor />
-      {loading ? (
-        <IntroLoader onComplete={() => setLoading(false)} />
-      ) : (
-        <>
-          <SmoothScroll />
-          <GlobalScene />
-          <TacticalHUD />
-          <CompanionCore />
-          <Router>
-            <AnimatedRoutes />
-          </Router>
-        </>
-      )}
+      <div className="min-h-screen bg-[#02040a] text-white">
+        <CustomCursor />
+        {loading ? (
+          <IntroLoader onComplete={() => setLoading(false)} />
+        ) : (
+          <>
+            <SmoothScroll />
+            <GlobalScene />
+            <TacticalHUD />
+            <CompanionCore />
+            <Router>
+              <AnimatedRoutes />
+            </Router>
+          </>
+        )}
+      </div>
     </ErrorBoundary>
   );
 }
