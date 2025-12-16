@@ -46,19 +46,28 @@ function Nebula() {
 
 export function GlobalScene() {
     return (
-        <div className="fixed inset-0 z-[-1] bg-[#02040a]">
-            {/* We use specific camera implementation to ensure it works globally */}
-            {/* Performance Optimization: Limit DPR to 1.5 for guaranteed 120fps */}
-            <Canvas camera={{ position: [0, 0, 20], fov: 45 }} gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }} dpr={[1, 1.5]}>
-                {/* Fog for depth */}
-                <fog attach="fog" args={['#02040a', 15, 45]} />
-                <color attach="background" args={['#02040a']} />
+        <div className="fixed inset-0 z-[-1] bg-gradient-to-b from-[#02040a] via-[#1a1a2e] to-black overflow-hidden">
+            {/* Fallback Background - Always Visible */}
+            <div className="absolute inset-0 bg-[#02040a]"></div>
+            
+            {/* Optional Canvas - Won't break if it fails */}
+            <div className="absolute inset-0 opacity-80">
+                <Canvas 
+                    camera={{ position: [0, 0, 20], fov: 45 }} 
+                    gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }} 
+                    dpr={[1, 1.5]}
+                    style={{ pointerEvents: 'none' }}
+                    onError={() => console.log('Canvas failed, using fallback')}
+                >
+                    <fog attach="fog" args={['#02040a', 15, 45]} />
+                    <color attach="background" args={['transparent']} />
 
-                <Float speed={1} rotationIntensity={0.5} floatIntensity={0.5}>
-                    <StarField />
-                    <Nebula />
-                </Float>
-            </Canvas>
+                    <Float speed={1} rotationIntensity={0.5} floatIntensity={0.5}>
+                        <StarField />
+                        <Nebula />
+                    </Float>
+                </Canvas>
+            </div>
 
             {/* Overlay Gradient for readability */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/80 pointer-events-none" />

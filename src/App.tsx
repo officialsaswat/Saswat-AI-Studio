@@ -98,7 +98,7 @@ function AnimatedRoutes() {
 }
 
 function App() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);  // DISABLED LOADER - bypass black screen
 
   return (
     <ErrorBoundary>
